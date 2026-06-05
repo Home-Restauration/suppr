@@ -69,7 +69,9 @@ Run commands in the repo root unless noted. Use `pnpm --filter apps/web <cmd>` f
   - ~15% Render background worker — always-on pgmq consumer dispatching SMS/email — ~$7/mo
   - ~5% Modal — Python web endpoints for burst AI batches (bulk loyalty, bulk autofill) — zero idle cost, $30/mo free tier; called via HTTP + SERVICE_TOKEN from Node
   - Nebius = inference endpoint only, called from whichever layer runs the AI job
-- **LLM:** Nebius token factory (`https://api.studio.nebius.ai/v1`) via `openai` npm package — OpenAI-compatible. Model: `meta-llama/Meta-Llama-3.1-70B-Instruct-fast` (configurable via `NEBIUS_MODEL`).
+- **LLM (two providers, both OpenAI-compatible):**
+  - **Azure AI Foundry** — primary fast-conversational tier (concierge bot, event autofill, guest comms). Model `Llama-4-Maverick-17B-128E-Instruct-FP8` via the `openai` package: `baseURL = ${AZURE_ENDPOINT}/models`, `defaultQuery {"api-version":"2024-05-01-preview"}`, `defaultHeaders {"api-key": AZURE_API_KEY}`. Env: `AZURE_ENDPOINT`, `AZURE_API_KEY`, `BOT_MODEL`.
+  - **Nebius token factory** (`https://api.tokenfactory.nebius.com/v1`) — available for overflow/batch; `deepseek-ai/DeepSeek-V3.2` available for high-stakes reasoning (refund calc, reconciliation) if needed. Env: `NEBIUS_API_KEY`, `NEBIUS_API_URL`, `DEEPSEEK_MODEL`.
 - **Deploy:** Render (web, api, bot services). Deploy order: api → web → bot.
 - **Payments:** Stripe Connect hybrid (destination charges, app-owned ledger)
 - **Messaging:** Twilio SMS + WhatsApp. iMessage via SendBlue (or Apple MfB later).

@@ -12,15 +12,18 @@ def run(payload: dict) -> dict:
         return {"error": "unauthorized"}, 401
 
     events = payload.get("events", [])
-    nebius = OpenAI(
-        api_key=os.environ["NEBIUS_API_KEY"],
-        base_url=os.environ.get("NEBIUS_API_BASE", "https://api.studio.nebius.ai/v1"),
+    # Event autofill runs on Azure AI Foundry (Llama 4 Maverick) — fast conversational tier.
+    llm = OpenAI(
+        api_key=os.environ["AZURE_API_KEY"],
+        base_url=os.environ["AZURE_ENDPOINT"] + "/models",
+        default_query={"api-version": "2024-05-01-preview"},
+        default_headers={"api-key": os.environ["AZURE_API_KEY"]},
     )
-    model = os.environ.get("NEBIUS_MODEL", "meta-llama/Meta-Llama-3.1-70B-Instruct-fast")
+    model = os.environ["BOT_MODEL"]
 
     results = []
     for event in events:
-        resp = nebius.chat.completions.create(
+        resp = llm.chat.completions.create(
             model=model,
             response_format={"type": "json_object"},
             messages=[

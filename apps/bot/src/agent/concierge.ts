@@ -1,12 +1,16 @@
 import OpenAI from "openai";
 import { createApiClient } from "@suppr/contracts/client";
 
+// Concierge runs on Azure AI Foundry (Llama 4 Maverick) — fast conversational tier.
+// The openai SDK works against Foundry with the /models path + api-version + api-key header.
 const llm = new OpenAI({
-  apiKey: process.env.NEBIUS_API_KEY,
-  baseURL: process.env.NEBIUS_API_BASE ?? "https://api.studio.nebius.ai/v1",
+  apiKey: process.env.AZURE_API_KEY,
+  baseURL: `${process.env.AZURE_ENDPOINT}/models`,
+  defaultQuery: { "api-version": "2024-05-01-preview" },
+  defaultHeaders: { "api-key": process.env.AZURE_API_KEY },
 });
 
-const MODEL = process.env.NEBIUS_MODEL ?? "meta-llama/Meta-Llama-3.1-70B-Instruct-fast";
+const MODEL = process.env.BOT_MODEL!;
 
 const SYSTEM_PROMPT = `You are the Suppr concierge — a warm, discreet host for a curated marketplace of private culinary experiences. You help guests discover chefs cooking near them and book a seat, end to end, in this chat.
 

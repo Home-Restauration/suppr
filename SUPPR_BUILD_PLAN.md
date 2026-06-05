@@ -144,14 +144,16 @@ The goal is **parallel work with zero merge collisions.** Achieve it with contra
   - **~80% → Supabase pg_cron + pgmq + Edge Functions.** Reminders, address release, drop alerts, payout reconciliation, webhook triggers. Runs inside Supabase at effectively $0.
   - **~15% → Render background worker.** One always-on 512 MB worker (~$7/mo) consumes the `notifications` pgmq queue and dispatches Twilio (SMS/WhatsApp) + Resend (email). Node.js native. Low latency, predictable cost.
   - **~5% → Modal.** Burst AI batch jobs only: bulk loyalty outreach, mass event autofill for many chefs, any GPU-intensive future workload. Modal is Python-native — expose batch functions as Modal web endpoints (`@app.function` + `@modal.web_endpoint`), call via HTTP from Node with a `SERVICE_TOKEN`. Zero idle cost; $30/mo free tier covers early scale.
-  - **Nebius = inference endpoint only.** Not a job runner. Every AI job above calls Nebius for the LLM call regardless of which layer orchestrates it.
-- **LLM / AI:** **Nebius AI token factory** — OpenAI-compatible API (`https://api.studio.nebius.ai/v1`). Use the `openai` npm package pointed at Nebius endpoint. Supports tool-calling via Llama 3.1 70B or equivalent. Powers the concierge agent and all chef-side AI tasks.
+  - **LLM = inference endpoint only.** Not a job runner. Every AI job above calls the LLM (Azure AI Foundry primary; Nebius for reasoning/overflow) regardless of which layer orchestrates it.
+- **LLM / AI (two providers, both OpenAI-compatible):**
+  - **Azure AI Foundry** — primary fast-conversational tier. Model `Llama-4-Maverick-17B-128E-Instruct-FP8` via the `openai` package (`baseURL = ${AZURE_ENDPOINT}/models`, `api-version` query param, `api-key` header). Powers the concierge agent, event autofill, and guest comms; supports tool-calling.
+  - **Nebius AI token factory** (`https://api.tokenfactory.nebius.com/v1`) — available for overflow/batch; its `deepseek-ai/DeepSeek-V3.2` model is available for high-stakes reasoning (refund calc, reconciliation) when stronger reasoning is needed.
 - **Deployment:** **Render** — web services for `apps/web`, `apps/api`, `apps/bot`; one Render background worker for the pgmq notification consumer. Render cron available as a secondary scheduler if needed. Modal runs separately as burst Python functions (see jobs split above).
 - **Payments:** Stripe Connect hybrid (see §9.6).
 - **Messaging:** Twilio — SMS + WhatsApp Business API. **iMessage:** see §10.1 (Apple Messages for Business or SendBlue; SMS is the universal fallback).
 - **Email:** Resend.
 - **Media:** Supabase Storage for images (up to 50MB per file); **Mux** for feed video (upload API + playback URL). **Azure CDN** fronts both for global low-latency delivery; Azure Blob Storage available as overflow/backup.
-- **Azure:** Azure CDN (front Supabase Storage + Mux for global delivery) + Azure Blob Storage (overflow media backup). Additional Azure services (e.g. Azure AI, Azure Maps) are available but not primary.
+- **Azure:** **Azure AI Foundry** is the primary LLM inference layer (see LLM / AI above). Azure CDN fronts Supabase Storage + Mux for global delivery; Azure Blob Storage is overflow media backup. Other Azure services (e.g. Azure Maps) are available but not primary.
 
 ### 4.2 Monorepo layout
 
@@ -196,10 +198,15 @@ SUPABASE_DB_URL=                 # postgres://... direct connection for migratio
 SUPABASE_STORAGE_BUCKET_IMAGES=  # e.g. suppr-media
 SUPABASE_STORAGE_BUCKET_VIDEO=   # e.g. suppr-video (pre-upload before Mux)
 
-# ── Nebius AI (LLM + compute) ─────────────────────────────────────────────────
+# ── AI / LLM ──────────────────────────────────────────────────────────────────
+# Fast conversational (concierge bot, event autofill, comms) → Azure AI Foundry · Llama 4 Maverick
+AZURE_ENDPOINT=                  # https://<resource>.services.ai.azure.com
+AZURE_API_KEY=
+BOT_MODEL=Llama-4-Maverick-17B-128E-Instruct-FP8
+# High-stakes reasoning / overflow batch → Nebius token factory · DeepSeek V3.2
 NEBIUS_API_KEY=                  # token factory key
-NEBIUS_API_BASE=https://api.studio.nebius.ai/v1
-NEBIUS_MODEL=meta-llama/Meta-Llama-3.1-70B-Instruct-fast  # override as needed
+NEBIUS_API_URL=https://api.tokenfactory.nebius.com/v1
+DEEPSEEK_MODEL=deepseek-ai/DeepSeek-V3.2
 
 # ── Stripe ───────────────────────────────────────────────────────────────────
 STRIPE_SECRET_KEY=
