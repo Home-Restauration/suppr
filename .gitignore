@@ -1,0 +1,29 @@
+# deps
+node_modules/
+.pnp
+.pnp.js
+
+# build
+.next/
+dist/
+out/
+build/
+
+# env - NEVER commit these
+.env
+.env.*
+!.env.example
+!infra/env.example
+infra/secrets/
+
+# turbo
+.turbo/
+
+# supabase local
+supabase/.branches/
+supabase/.temp/
+
+# misc
+.DS_Store
+*.log
+.vercel

@@ -1,0 +1,9 @@
+{
+  "name": "@suppr/db",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "push": "supabase db push",
+    "reset": "supabase db reset"
+  }
+}
