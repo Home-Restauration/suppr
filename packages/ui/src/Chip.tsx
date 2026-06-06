@@ -1,6 +1,6 @@
 import React from "react";
 type ChipVariant = "paid" | "note" | "alert" | "trust" | "accent" | "default";
-interface ChipProps { variant?: ChipVariant; children: React.ReactNode; className?: string; }
+interface ChipProps { variant?: ChipVariant | undefined; children: React.ReactNode; className?: string | undefined; style?: React.CSSProperties | undefined; }
 const chipStyles: Record<ChipVariant, React.CSSProperties> = {
   paid:    { background: "var(--color-paid-bg)",    color: "var(--color-paid)" },
   note:    { background: "var(--color-note-bg)",    color: "var(--color-note)" },
@@ -9,9 +9,9 @@ const chipStyles: Record<ChipVariant, React.CSSProperties> = {
   accent:  { background: "var(--color-accent-tint)",color: "var(--color-accent-deep)" },
   default: { background: "var(--color-surface-2)",  color: "var(--color-text-2)" },
 };
-export function Chip({ variant = "default", children }: ChipProps) {
+export function Chip({ variant = "default", children, className, style }: ChipProps) {
   return (
-    <span style={{ ...chipStyles[variant], display: "inline-block", fontSize: 12, padding: "3px 10px", borderRadius: "var(--radius-md)", fontWeight: 500 }}>
+    <span className={className} style={{ ...chipStyles[variant], display: "inline-block", fontSize: 12, padding: "3px 10px", borderRadius: "var(--radius-md)", fontWeight: 500, ...style }}>
       {children}
     </span>
   );

@@ -48,7 +48,7 @@ export function createApiClient(config: ApiClientConfig) {
 
   return {
     events: {
-      list: (params: { lat?: number; lng?: number; date?: string; type?: string; cuisine?: string; q?: string; cursor?: string }) => {
+      list: (params: { lat?: number; lng?: number; date?: string; type?: string; cuisine?: string; q?: string; cursor?: string; chef_id?: string }) => {
         const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v != null) as [string, string][]);
         return r<EventCard[]>("GET", `/events?${qs}`);
       },
@@ -58,7 +58,7 @@ export function createApiClient(config: ApiClientConfig) {
       get: (handle: string) => r<ChefProfilePublic>("GET", `/chefs/${handle}`),
     },
     feed: {
-      list: (params: { lat?: number; lng?: number; cursor?: string }) => {
+      list: (params: { lat?: number; lng?: number; cursor?: string; chef_id?: string }) => {
         const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v != null) as [string, string][]);
         return r<FeedPost[]>("GET", `/feed?${qs}`);
       },
