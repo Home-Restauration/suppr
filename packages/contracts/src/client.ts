@@ -4,6 +4,8 @@ import type {
   CreateBookingRequest, CreateBookingResponse,
   Booking, ModifyBookingRequest, ModifyBookingResponse,
   WaitlistRequestSchema, DashboardSnapshot, AgentTask,
+  TeamMember, TeamPermissions, ReportSummary,
+  ChefApplication, AdminStats,
 } from "./schemas.js";
 import { z } from "zod";
 
@@ -77,7 +79,7 @@ export function createApiClient(config: ApiClientConfig) {
     chef: {
       profile: {
         get: () => r<import("./schemas.js").ChefProfile>("GET", "/chef/profile"),
-        update: (body: Partial<Pick<import("./schemas.js").ChefProfile, "autopilot" | "brand_name" | "bio">>) =>
+        update: (body: Partial<import("./schemas.js").ChefProfile>) =>
           r<import("./schemas.js").ChefProfile>("PATCH", "/chef/profile", body),
       },
       dashboard: (date?: string) => r<DashboardSnapshot[]>("GET", `/chef/dashboard${date ? `?date=${date}` : ""}`),
@@ -88,7 +90,55 @@ export function createApiClient(config: ApiClientConfig) {
       },
       events: {
         bookings: (eventId: string) => r<Booking[]>("GET", `/chef/events/${eventId}/bookings`),
+        list: () => r<z.infer<typeof EventSchema>[]>("GET", "/chef/events"),
+        get: (id: string) => r<z.infer<typeof EventSchema>>("GET", `/chef/events/${id}`),
+        create: (body: Record<string, unknown>) => r<z.infer<typeof EventSchema>>("POST", "/chef/events", body),
+        update: (id: string, body: Record<string, unknown>) => r<z.infer<typeof EventSchema>>("PATCH", `/chef/events/${id}`, body),
+        publish: (id: string) => r<z.infer<typeof EventSchema>>("POST", `/chef/events/${id}/publish`),
+        unpublish: (id: string) => r<z.infer<typeof EventSchema>>("POST", `/chef/events/${id}/unpublish`),
+        autofill: (prompt: string) => r<{ title: string; description: string; menu: Array<{ course: string; description: string }> }>("POST", "/chef/events/autofill", { prompt }),
+        saveTemplate: (id: string, name: string) => r<{ ok: boolean }>("POST", `/chef/events/${id}/save-template`, { name }),
+        duplicate: (id: string) => r<z.infer<typeof EventSchema>>("POST", `/chef/events/${id}/duplicate`),
       },
+      reports: {
+        summary: (from: string, to: string) => r<ReportSummary>("GET", `/chef/reports?from=${from}&to=${to}`),
+      },
+      team: {
+        list: () => r<TeamMember[]>("GET", "/chef/team"),
+        invite: (body: { email: string; permissions: TeamPermissions }) => r<{ ok: boolean }>("POST", "/chef/team/invite", body),
+        updatePermissions: (id: string, permissions: TeamPermissions) => r<TeamMember>("PATCH", `/chef/team/${id}`, { permissions }),
+        remove: (id: string) => r<{ ok: boolean }>("DELETE", `/chef/team/${id}`),
+      },
+      posts: {
+        list: () => r<FeedPost[]>("GET", "/chef/posts"),
+        create: (body: Record<string, unknown>) => r<FeedPost>("POST", "/chef/posts", body),
+        update: (id: string, body: Record<string, unknown>) => r<FeedPost>("PATCH", `/chef/posts/${id}`, body),
+        publish: (id: string) => r<FeedPost>("POST", `/chef/posts/${id}/publish`),
+        delete: (id: string) => r<{ ok: boolean }>("DELETE", `/chef/posts/${id}`),
+        aiCaption: (mediaUrl: string) => r<{ caption: string }>("POST", "/chef/posts/ai-caption", { media_url: mediaUrl }),
+      },
+      media: {
+        signedUrl: (bucket: string, filename: string, contentType: string) =>
+          r<{ upload_url: string; public_url: string }>("POST", "/media/signed-url", { bucket, filename, content_type: contentType }),
+      },
+      stripe: {
+        connectUrl: () => r<{ url: string }>("GET", "/chef/stripe/connect-url"),
+      },
+    },
+    admin: {
+      applications: {
+        list: () => r<ChefApplication[]>("GET", "/admin/applications"),
+        approve: (id: string) => r<{ ok: boolean }>("POST", `/admin/applications/${id}/approve`),
+        reject: (id: string, reason?: string) => r<{ ok: boolean }>("POST", `/admin/applications/${id}/reject`, { reason }),
+      },
+      events: {
+        list: (params?: { cursor?: string }) => {
+          const qs = params ? new URLSearchParams(Object.entries(params).filter(([, v]) => v != null) as [string, string][]) : "";
+          return r<EventCard[]>("GET", `/admin/events?${qs}`);
+        },
+        unpublish: (id: string) => r<{ ok: boolean }>("POST", `/admin/events/${id}/unpublish`),
+      },
+      stats: () => r<AdminStats>("GET", "/admin/stats"),
     },
   };
 }

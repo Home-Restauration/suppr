@@ -273,6 +273,71 @@ export const DashboardSnapshotSchema = z.object({
   payment_pending_count: z.number().int(),
 });
 
+// ── Team ──────────────────────────────────────────────────────────────────────
+export const TeamPermissionsSchema = z.object({
+  profile_events:  z.boolean(),
+  communication:   z.boolean(),
+  finance:         z.boolean(),
+  kitchen_guests:  z.boolean(),
+  refunds_comps:   z.boolean(),
+});
+
+export const TeamMemberSchema = z.object({
+  id:          z.string().uuid(),
+  user_id:     z.string().uuid().nullable(),
+  name:        z.string().nullable(),
+  email:       z.string().email(),
+  role:        z.enum(["owner","manager","staff"]),
+  permissions: TeamPermissionsSchema,
+  invited_at:  z.string().datetime(),
+  accepted_at: z.string().datetime().nullable(),
+});
+
+// ── Reports ────────────────────────────────────────────────────────────────────
+export const ReportEventRowSchema = z.object({
+  event_id:          z.string().uuid(),
+  title:             z.string(),
+  starts_at:         z.string().datetime(),
+  bookings:          z.number().int(),
+  sales_cents:       z.number().int(),
+  tips_cents:        z.number().int(),
+  taxes_cents:       z.number().int(),
+  platform_fee_cents:z.number().int(),
+  refunds_cents:     z.number().int(),
+  net_cents:         z.number().int(),
+});
+
+export const ReportSummarySchema = z.object({
+  total_sales_cents:   z.number().int(),
+  tips_cents:          z.number().int(),
+  taxes_cents:         z.number().int(),
+  platform_fees_cents: z.number().int(),
+  refunds_cents:       z.number().int(),
+  net_payout_cents:    z.number().int(),
+  series: z.array(z.object({ date: z.string(), revenue_cents: z.number().int() })),
+  events: z.array(ReportEventRowSchema),
+});
+
+// ── Admin ──────────────────────────────────────────────────────────────────────
+export const ChefApplicationSchema = z.object({
+  id:              z.string().uuid(),
+  chef_profile_id: z.string().uuid(),
+  brand_name:      z.string(),
+  city:            z.string(),
+  bio:             z.string().nullable(),
+  cuisines:        z.array(z.string()),
+  applied_at:      z.string().datetime(),
+  status:          z.enum(["pending","approved","rejected"]),
+});
+
+export const AdminStatsSchema = z.object({
+  total_bookings:       z.number().int(),
+  total_revenue_cents:  z.number().int(),
+  active_chefs:         z.number().int(),
+  events_this_week:     z.number().int(),
+  bookings_this_week:   z.number().int(),
+});
+
 // ── Type exports ──────────────────────────────────────────────────────────────
 export type Profile = z.infer<typeof ProfileSchema>;
 export type ChefProfile = z.infer<typeof ChefProfileSchema>;
@@ -295,3 +360,9 @@ export type CreateBookingResponse = z.infer<typeof CreateBookingResponseSchema>;
 export type ModifyBookingRequest = z.infer<typeof ModifyBookingRequestSchema>;
 export type ModifyBookingResponse = z.infer<typeof ModifyBookingResponseSchema>;
 export type DashboardSnapshot = z.infer<typeof DashboardSnapshotSchema>;
+export type TeamPermissions = z.infer<typeof TeamPermissionsSchema>;
+export type TeamMember = z.infer<typeof TeamMemberSchema>;
+export type ReportEventRow = z.infer<typeof ReportEventRowSchema>;
+export type ReportSummary = z.infer<typeof ReportSummarySchema>;
+export type ChefApplication = z.infer<typeof ChefApplicationSchema>;
+export type AdminStats = z.infer<typeof AdminStatsSchema>;
