@@ -32,7 +32,7 @@ async function req<T>(
   const res = await fetch(`${config.baseUrl}${path}`, {
     method,
     headers,
-    body: body ? JSON.stringify(body) : undefined,
+    ...(body != null ? { body: JSON.stringify(body) } : {}),
   });
 
   if (!res.ok) {
@@ -75,11 +75,19 @@ export function createApiClient(config: ApiClientConfig) {
       join: (body: z.infer<typeof WaitlistRequestSchema>) => r<{ ok: boolean }>("POST", "/waitlist", body),
     },
     chef: {
+      profile: {
+        get: () => r<import("./schemas.js").ChefProfile>("GET", "/chef/profile"),
+        update: (body: Partial<Pick<import("./schemas.js").ChefProfile, "autopilot" | "brand_name" | "bio">>) =>
+          r<import("./schemas.js").ChefProfile>("PATCH", "/chef/profile", body),
+      },
       dashboard: (date?: string) => r<DashboardSnapshot[]>("GET", `/chef/dashboard${date ? `?date=${date}` : ""}`),
       agentTasks: {
         list: () => r<AgentTask[]>("GET", "/chef/agent/tasks"),
         approve: (id: string) => r<AgentTask>("POST", `/chef/agent/tasks/${id}/approve`),
         reject: (id: string) => r<AgentTask>("POST", `/chef/agent/tasks/${id}/reject`),
+      },
+      events: {
+        bookings: (eventId: string) => r<Booking[]>("GET", `/chef/events/${eventId}/bookings`),
       },
     },
   };

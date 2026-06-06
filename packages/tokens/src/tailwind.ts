@@ -1,6 +1,4 @@
-import type { Config } from "tailwindcss";
-
-export const supprTokens: Config["theme"] = {
+export const supprTokens: { extend: Record<string, unknown> } = {
   extend: {
     colors: {
       canvas: "var(--color-canvas)",

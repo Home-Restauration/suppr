@@ -1,12 +1,16 @@
 import { createClient } from "@/lib/supabase/server";
 import { createApiClient } from "@suppr/contracts/client";
+import type { FeedPost } from "@suppr/contracts/schemas";
 
 export default async function FeedPage() {
   const supabase = createClient();
   const { data: { session } } = await supabase.auth.getSession();
-  const api = createApiClient({ baseUrl: process.env.API_URL!, token: session?.access_token });
+  const api = createApiClient({
+    baseUrl: process.env.API_URL!,
+    ...(session?.access_token ? { token: session.access_token } : {}),
+  });
 
-  let posts = [];
+  let posts: FeedPost[] = [];
   try { posts = await api.feed.list({}); } catch { /* show empty state */ }
 
   return (
