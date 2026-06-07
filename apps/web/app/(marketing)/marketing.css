@@ -1,0 +1,12 @@
+/* Marketing-scoped palette — imported only in (marketing)/layout.tsx */
+/* DO NOT import in app routes. Namespace: --mk-* */
+:root {
+  --mk-bg:        #FFFFFF;
+  --mk-bg-soft:   #FAFAF8;
+  --mk-ink:       #161616;
+  --mk-ink-2:     #555555;
+  --mk-ink-3:     #8A8A8A;
+  --mk-line:      #EEEEEE;
+  --mk-accent:    #E0533D;
+  --mk-accent-dk: #C4452F;
+}

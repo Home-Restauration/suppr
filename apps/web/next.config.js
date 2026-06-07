@@ -5,6 +5,7 @@ const withPWA = require("next-pwa")({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  transpilePackages: ["@suppr/ui", "@suppr/contracts"],
   images: {
     remotePatterns: [
       { protocol: "https", hostname: process.env.AZURE_CDN_HOSTNAME || "*.azureedge.net" },
