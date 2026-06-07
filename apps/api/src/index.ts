@@ -3,6 +3,7 @@ import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
 import { stripeWebhookRoute } from "./webhooks/stripe.js";
 import { stripeConnectWebhookRoute } from "./webhooks/stripe-connect.js";
+import { muxWebhookRoute } from "./webhooks/mux.js";
 
 const app = Fastify({ logger: true });
 
@@ -15,6 +16,7 @@ app.get("/health", async () => ({ ok: true, ts: new Date().toISOString() }));
 // raw-body content-type parser doesn't bleed into other routes.
 await app.register(stripeWebhookRoute);
 await app.register(stripeConnectWebhookRoute);
+await app.register(muxWebhookRoute);
 
 // Routes will be registered here:
 // await app.register(import("./routes/events.js").then(m => m.eventsRoute));
