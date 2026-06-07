@@ -3,166 +3,69 @@
 import Link from "next/link";
 import { useState } from "react";
 
-const COLUMNS = [
-  {
-    heading: "For Guests",
-    links: [
-      { label: "Find a table", href: "/feed" },
-      { label: "How it works", href: "/#how-it-works" },
-      { label: "Download app", href: "#" },
-    ],
-  },
-  {
-    heading: "For Chefs",
-    links: [
-      { label: "Apply to host", href: "/apply" },
-      { label: "How it works", href: "/for-chefs" },
-      { label: "Pricing", href: "/for-chefs#pricing" },
-    ],
-  },
-  {
-    heading: "Company",
-    links: [
-      { label: "About", href: "/#about" },
-      { label: "Press", href: "#" },
-      { label: "Careers", href: "#" },
-    ],
-  },
-  {
-    heading: "Legal",
-    links: [
-      { label: "Privacy", href: "/privacy" },
-      { label: "Terms", href: "/terms" },
-      { label: "Cookies", href: "#" },
-    ],
-  },
+const COLS = [
+  { h: "For Guests", links: [{ l: "Find a table", href: "/feed" }, { l: "How it works", href: "/#how-it-works" }, { l: "Download app", href: "#" }] },
+  { h: "For Chefs", links: [{ l: "Apply to host", href: "/apply" }, { l: "For chefs", href: "/for-chefs" }, { l: "Pricing", href: "/for-chefs#pricing" }] },
+  { h: "Company", links: [{ l: "About", href: "#" }, { l: "Press", href: "#" }, { l: "Careers", href: "#" }] },
+  { h: "Legal", links: [{ l: "Privacy", href: "/privacy" }, { l: "Terms", href: "/terms" }, { l: "Cookies", href: "#" }] },
 ];
 
-function FooterLink({ href, label }: { href: string; label: string }) {
-  const [hovered, setHovered] = useState(false);
+function FLink({ l, href }: { l: string; href: string }) {
+  const [h, setH] = useState(false);
   return (
-    <Link
-      href={href}
-      style={{
-        fontSize: 14,
-        color: hovered ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.35)",
-        textDecoration: "none",
-        lineHeight: 1.5,
-        transition: "color 0.15s ease",
-      }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-    >
-      {label}
+    <Link href={href} style={{ fontSize: 14, color: h ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.25)", textDecoration: "none", lineHeight: 1.5, transition: "color 0.15s ease" }}
+      onMouseEnter={() => setH(true)} onMouseLeave={() => setH(false)}>
+      {l}
     </Link>
   );
 }
 
 export function MarketingFooter() {
   return (
-    <footer style={{ background: "var(--mk-ink)", padding: "64px 32px 40px" }}>
-      <div style={{ maxWidth: 1120, margin: "0 auto" }}>
-        {/* Top row */}
-        <div style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          marginBottom: 56,
-          flexWrap: "wrap",
-          gap: 24,
-        }}>
+    <footer style={{ background: "var(--mk-studio)", padding: "64px 40px 40px", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+      <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 52, flexWrap: "wrap", gap: 24 }}>
           <div>
-            <p style={{
-              fontFamily: "var(--font-display)",
-              fontSize: 24,
-              color: "var(--mk-bg)",
-              marginBottom: 8,
-              letterSpacing: "-0.02em",
-            }}>
-              Suppr<span style={{ color: "var(--mk-accent)" }}>.</span>
+            <p style={{ fontFamily: "var(--font-display)", fontSize: 22, color: "white", marginBottom: 8, letterSpacing: "-0.03em", fontWeight: 600 }}>
+              Suppr<span style={{ color: "var(--mk-gold)" }}>.</span>
             </p>
-            <p style={{ fontSize: 14, color: "rgba(255,255,255,0.35)", lineHeight: 1.5 }}>
-              A curated table for every city.
-            </p>
+            <p style={{ fontSize: 13, color: "rgba(255,255,255,0.25)", lineHeight: 1.5 }}>Food as art. A curated table for every city.</p>
           </div>
           <div style={{ display: "flex", gap: 10 }}>
-            {["Instagram", "X (Twitter)"].map((name) => (
-              <a
-                key={name}
-                href="#"
-                aria-label={name}
-                style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: "50%",
-                  border: "0.5px solid rgba(255,255,255,0.15)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "rgba(255,255,255,0.5)",
-                  textDecoration: "none",
-                  fontSize: 12,
-                  transition: "border-color 0.15s ease",
-                }}
+            {["IG", "X"].map((name) => (
+              <a key={name} href="#" aria-label={name} style={{
+                width: 36, height: 36, borderRadius: "50%",
+                border: "0.5px solid rgba(255,255,255,0.1)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                color: "rgba(255,255,255,0.3)", textDecoration: "none",
+                fontSize: 11, fontWeight: 700, letterSpacing: "0.04em",
+                transition: "border-color 0.15s ease, color 0.15s ease",
+              }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.3)"; e.currentTarget.style.color = "rgba(255,255,255,0.7)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "rgba(255,255,255,0.3)"; }}
               >
-                {name === "Instagram" ? (
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.25">
-                    <rect x="1" y="1" width="14" height="14" rx="4" />
-                    <circle cx="8" cy="8" r="3" />
-                    <circle cx="12" cy="4" r="0.75" fill="currentColor" stroke="none" />
-                  </svg>
-                ) : (
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
-                    <path d="M1 1l4.5 6.5L1 13h1.3l3.5-4 3 4H12L7.3 6.3 11.5 1h-1.3L6.8 4.5 4 1H1z" />
-                  </svg>
-                )}
+                {name}
               </a>
             ))}
           </div>
         </div>
 
-        {/* Link columns */}
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
-          gap: "32px 24px",
-          marginBottom: 56,
-        }}>
-          {COLUMNS.map((col) => (
-            <div key={col.heading}>
-              <p style={{
-                fontSize: 11,
-                fontWeight: 600,
-                color: "rgba(255,255,255,0.5)",
-                textTransform: "uppercase",
-                letterSpacing: "0.1em",
-                marginBottom: 16,
-              }}>
-                {col.heading}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "28px 24px", marginBottom: 52 }}>
+          {COLS.map((col) => (
+            <div key={col.h}>
+              <p style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.35)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 14 }}>
+                {col.h}
               </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {col.links.map((l) => <FooterLink key={l.label} {...l} />)}
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {col.links.map((link) => <FLink key={link.l} {...link} />)}
               </div>
             </div>
           ))}
         </div>
 
-        {/* Bottom */}
-        <div style={{
-          borderTop: "0.5px solid rgba(255,255,255,0.1)",
-          paddingTop: 24,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexWrap: "wrap",
-          gap: 12,
-        }}>
-          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.25)" }}>
-            © 2026 Suppr. All rights reserved.
-          </p>
-          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.25)" }}>
-            Private dining, elevated.
-          </p>
+        <div style={{ borderTop: "0.5px solid rgba(255,255,255,0.07)", paddingTop: 24, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.18)" }}>© 2026 Suppr. All rights reserved.</p>
+          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.18)" }}>Food as art. Private dining, elevated.</p>
         </div>
       </div>
     </footer>
