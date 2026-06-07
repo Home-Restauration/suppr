@@ -2,14 +2,19 @@ import Fastify, { type FastifyRequest } from "fastify";
 import formbody from "@fastify/formbody";
 import Twilio from "twilio";
 import { runConcierge } from "./agent/concierge.js";
+import {
+  verifyBlooioSignature,
+  sendBlooioMessage,
+  type BlooioInboundEvent,
+} from "./channels/blooio.js";
 
 const app = Fastify({ logger: true });
 
 // Twilio sends application/x-www-form-urlencoded
 await app.register(formbody);
 
-// Validate Twilio signature — enforced when BOT_URL is an https URL (production).
-// Skipped in local dev when BOT_URL is localhost or unset.
+// ── Twilio signature validation ───────────────────────────────────────────────
+// Enforced on https BOT_URL (production), skipped in local dev.
 function isTwilioRequestValid(req: FastifyRequest, webhookPath: string): boolean {
   const botUrl = process.env.BOT_URL ?? "";
   if (!botUrl.startsWith("https://")) return true;
@@ -64,9 +69,49 @@ app.post("/webhooks/twilio/sms", async (req, reply) => {
   return twiml(botReply);
 });
 
-// ── In-app web chat (SSE or JSON) ─────────────────────────────────────────────
+// ── Blooio iMessage ───────────────────────────────────────────────────────────
+// Registered as a scoped plugin so the raw-buffer JSON parser doesn't affect
+// the rest of the bot (Twilio routes consume parsed url-encoded bodies).
+await app.register(async (instance) => {
+  instance.addContentTypeParser(
+    "application/json",
+    { parseAs: "buffer" },
+    (_req, body, done) => done(null, body)
+  );
+
+  instance.post("/webhooks/blooio/imessage", async (req, reply) => {
+    const rawBody = req.body as Buffer;
+    const signature = (req.headers["x-blooio-signature"] as string) ?? "";
+
+    if (!verifyBlooioSignature(rawBody, signature)) {
+      req.log.warn("[blooio] signature verification failed");
+      return reply.code(403).send("Forbidden");
+    }
+
+    const event = JSON.parse(rawBody.toString()) as BlooioInboundEvent;
+
+    // Only handle inbound messages; ack everything else silently.
+    if (event.event !== "message.received" || !event.text) {
+      return reply.code(200).send({ received: true });
+    }
+
+    // TODO: load/persist conversation history from Supabase keyed by event.sender
+    const { reply: botReply } = await runConcierge(
+      [{ role: "user", content: event.text }],
+      ""
+    );
+
+    await sendBlooioMessage(event.sender, botReply);
+
+    return reply.code(200).send({ received: true });
+  });
+});
+
+// ── In-app web chat ───────────────────────────────────────────────────────────
 app.post("/chat", async (req) => {
-  const { messages } = req.body as { messages: import("./agent/concierge.js").ConversationMessage[] };
+  const { messages } = req.body as {
+    messages: import("./agent/concierge.js").ConversationMessage[];
+  };
   return runConcierge(messages, "");
 });
 
