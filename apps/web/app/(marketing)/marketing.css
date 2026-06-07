@@ -1,31 +1,12 @@
-/* Marketing-scoped tokens — only imported in (marketing)/layout.tsx */
+/* Marketing-scoped palette — imported only in (marketing)/layout.tsx */
+/* DO NOT import in app routes. Namespace: --mk-* */
 :root {
-  --mk-paper:    #F5F2EB;   /* warm off-white / paper */
-  --mk-studio:   #111110;   /* near-black */
-  --mk-ink:      #111110;   /* primary text */
-  --mk-mid:      #6A6760;   /* secondary */
-  --mk-muted:    #9A9792;   /* muted */
-  --mk-faint:    #DDD9D0;   /* hairlines */
-  --mk-gold:     #C8891A;   /* warm gold — the one accent */
-  --mk-surface:  #FDFBF6;   /* lightest sections */
+  --mk-bg:        #FFFFFF;
+  --mk-bg-soft:   #FAFAF8;
+  --mk-ink:       #161616;
+  --mk-ink-2:     #555555;
+  --mk-ink-3:     #8A8A8A;
+  --mk-line:      #EEEEEE;
+  --mk-accent:    #E0533D;
+  --mk-accent-dk: #C4452F;
 }
-
-/* Hide default cursor in creative zone */
-.mk-cursor-zone { cursor: none; }
-@media (hover: none) { .mk-cursor-zone { cursor: auto; } }
-
-/* Global grain overlay */
-.mk-grain::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: 9990;
-  pointer-events: none;
-  opacity: 0.032;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-size: 200px 200px;
-}
-
-/* Filmstrip drag rail */
-.mk-strip { scrollbar-width: none; }
-.mk-strip::-webkit-scrollbar { display: none; }
