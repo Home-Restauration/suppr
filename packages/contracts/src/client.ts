@@ -1,11 +1,12 @@
 import type {
-  EventCard, EventSchema, ChefProfilePublic, FeedPost,
+  EventCard, EventSchema, ChefProfilePublic, FeedPost, HeroFeedPost,
   QuoteRequest, LineItems, HoldRequest, HoldResponse,
   CreateBookingRequest, CreateBookingResponse,
   Booking, ModifyBookingRequest, ModifyBookingResponse,
   WaitlistRequestSchema, DashboardSnapshot, AgentTask,
   TeamMember, TeamPermissions, ReportSummary,
-  ChefApplication, AdminStats,
+  ChefApplication, ChefApplicationSubmit, AdminStats,
+  InviteCode, ProfileImportRequest, ProfileImportResponse,
 } from "./schemas.js";
 import { z } from "zod";
 
@@ -64,6 +65,13 @@ export function createApiClient(config: ApiClientConfig) {
         const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v != null) as [string, string][]);
         return r<FeedPost[]>("GET", `/feed?${qs}`);
       },
+      // Public, unauthenticated — returns curated hero reel ordered by hero_order ASC.
+      // Powered by feed_posts.is_hero_featured + hero_order (migration 0021).
+      hero: () => r<HeroFeedPost[]>("GET", "/feed/hero"),
+    },
+    // Public submission — no auth required. Valid invite_code → priority_eligible=true.
+    chefApplications: {
+      submit: (body: ChefApplicationSubmit) => r<{ ok: boolean; application_id: string }>("POST", "/chef-applications", body),
     },
     bookings: {
       quote: (body: QuoteRequest) => r<LineItems>("POST", "/bookings/quote", body),
@@ -124,12 +132,28 @@ export function createApiClient(config: ApiClientConfig) {
       stripe: {
         connectUrl: () => r<{ url: string }>("GET", "/chef/stripe/connect-url"),
       },
+      onboard: {
+        // Accepts chef-provided content → Azure/Nebius LLM → returns draft ChefProfile fields.
+        // Chef reviews and confirms the draft before it is saved.
+        profileImport: (body: ProfileImportRequest) =>
+          r<ProfileImportResponse>("POST", "/chef/onboard/profile-import", body),
+      },
     },
     admin: {
       applications: {
-        list: () => r<ChefApplication[]>("GET", "/admin/applications"),
-        approve: (id: string) => r<{ ok: boolean }>("POST", `/admin/applications/${id}/approve`),
-        reject: (id: string, reason?: string) => r<{ ok: boolean }>("POST", `/admin/applications/${id}/reject`, { reason }),
+        list: (params?: { status?: string; priority?: boolean; cursor?: string }) => {
+          const qs = params ? new URLSearchParams(Object.entries(params).filter(([, v]) => v != null) as [string, string][]) : "";
+          return r<ChefApplication[]>("GET", `/admin/applications?${qs}`);
+        },
+        get: (id: string) => r<ChefApplication>("GET", `/admin/applications/${id}`),
+        approve: (id: string, note?: string) => r<{ ok: boolean }>("POST", `/admin/applications/${id}/approve`, { note }),
+        reject: (id: string, note?: string) => r<{ ok: boolean }>("POST", `/admin/applications/${id}/reject`, { note }),
+      },
+      inviteCodes: {
+        list: () => r<InviteCode[]>("GET", "/admin/invite-codes"),
+        create: (body: { code: string; description?: string; max_uses?: number; expires_at?: string }) =>
+          r<InviteCode>("POST", "/admin/invite-codes", body),
+        revoke: (code: string) => r<{ ok: boolean }>("POST", `/admin/invite-codes/${code}/revoke`),
       },
       events: {
         list: (params?: { cursor?: string }) => {

@@ -25,6 +25,32 @@ export const Dietary = z.enum([
   "vegetarian","vegan","halal","kosher","gluten_free","dairy_free","nut_free","other"
 ]);
 
+// ── Professional profile (public-facing resume side) ────────────────────────
+// Stored as chef_profiles.professional JSONB (migration 0023).
+export const PressItemSchema = z.object({
+  publication: z.string(),
+  headline:    z.string(),
+  url:         z.string().url().optional(),
+  year:        z.number().int().optional(),
+});
+
+export const CookbookSchema = z.object({
+  title:     z.string(),
+  year:      z.number().int().optional(),
+  publisher: z.string().optional(),
+  cover_url: z.string().url().optional(),
+});
+
+export const ProfessionalSchema = z.object({
+  years_experience: z.number().int().nonnegative().optional(),
+  background:       z.string().optional(),           // training, career narrative
+  past_venues:      z.array(z.string()).optional(),  // "Atelier Crenn", "Noma", …
+  certifications:   z.array(z.string()).optional(),  // "CIA graduate", "ACF CEC", …
+  awards:           z.array(z.string()).optional(),  // "Best New Chef — F&W 2020"
+  press:            z.array(PressItemSchema).optional(),
+  cookbooks:        z.array(CookbookSchema).optional(),
+});
+
 // ── Core entity schemas ─────────────────────────────────────────────────────
 export const ProfileSchema = z.object({
   id: z.string().uuid(),
@@ -36,26 +62,29 @@ export const ProfileSchema = z.object({
 });
 
 export const ChefProfileSchema = z.object({
-  id: z.string().uuid(),
-  owner_user_id: z.string().uuid(),
-  brand_name: z.string(),
-  bio: z.string().nullable(),
-  city: z.string(),
-  cuisines: z.array(z.string()),
-  gallery: z.array(z.object({ url: z.string(), alt: z.string().optional() })),
-  brand_accent: z.string().nullable(),
-  social_links: z.record(z.string()),
-  approval_status: z.enum(["pending","approved","suspended"]),
-  payment_acct_id: z.string().nullable(),
-  visibility: z.enum(["public","private"]),
-  tier: Tier,
-  autopilot: z.boolean(),
-  created_at: z.string().datetime(),
+  id:               z.string().uuid(),
+  owner_user_id:    z.string().uuid(),
+  brand_name:       z.string(),
+  bio:              z.string().nullable(),
+  city:             z.string(),
+  cuisines:         z.array(z.string()),
+  gallery:          z.array(z.object({ url: z.string(), alt: z.string().optional() })),
+  brand_accent:     z.string().nullable(),
+  social_links:     z.record(z.string()),
+  professional:     ProfessionalSchema,              // ← new (migration 0023)
+  approval_status:  z.enum(["pending","approved","suspended"]),
+  payment_acct_id:  z.string().nullable(),
+  visibility:       z.enum(["public","private"]),
+  tier:             Tier,
+  autopilot:        z.boolean(),
+  created_at:       z.string().datetime(),
 });
 
+// Public-safe subset — includes professional (it's the chef's public resume)
 export const ChefProfilePublicSchema = ChefProfileSchema.pick({
   id: true, brand_name: true, bio: true, city: true, cuisines: true,
   gallery: true, brand_accent: true, social_links: true, visibility: true,
+  professional: true,                                // ← added
 });
 
 export const PolicyWindowSchema = z.object({
@@ -124,6 +153,23 @@ export const EventCardSchema = EventSchema.omit({ template_id: true }).extend({
   available_seats: z.number().int().nonnegative(),
 });
 
+// ── Hero feed ────────────────────────────────────────────────────────────────
+// Returned by GET /feed/hero (public, unauthenticated).
+// Curated via feed_posts.is_hero_featured + hero_order (migration 0021).
+export const HeroFeedPostSchema = z.object({
+  id:              z.string().uuid(),
+  chef_profile_id: z.string().uuid(),
+  mux_playback_id: z.string().nullable(), // from media[0].mux_playback_id
+  caption:         z.string().nullable(),
+  hero_order:      z.number().int().nullable(),
+  // chef fields joined in the query
+  chef_handle:     z.string(),            // derived from chef brand_name (slugified)
+  chef_name:       z.string(),            // brand_name
+  chef_city:       z.string(),
+  follower_count:  z.number().int(),      // COUNT of follows.chef_profile_id
+  linked_event_id: z.string().uuid().nullable(),
+});
+
 export const GuestInputSchema = z.object({
   name: z.string().min(1),
   email: z.string().email().optional(),
@@ -189,6 +235,8 @@ export const FeedPostSchema = z.object({
   caption: z.string().nullable(),
   linked_event_id: z.string().uuid().nullable(),
   drafted_by_ai: z.boolean(),
+  is_hero_featured: z.boolean(),                      // ← new (migration 0021)
+  hero_order: z.number().int().nullable(),             // ← new (migration 0021)
   status: z.enum(["draft","published"]),
   published_at: z.string().datetime().nullable(),
   created_at: z.string().datetime(),
@@ -295,16 +343,16 @@ export const TeamMemberSchema = z.object({
 
 // ── Reports ────────────────────────────────────────────────────────────────────
 export const ReportEventRowSchema = z.object({
-  event_id:          z.string().uuid(),
-  title:             z.string(),
-  starts_at:         z.string().datetime(),
-  bookings:          z.number().int(),
-  sales_cents:       z.number().int(),
-  tips_cents:        z.number().int(),
-  taxes_cents:       z.number().int(),
-  platform_fee_cents:z.number().int(),
-  refunds_cents:     z.number().int(),
-  net_cents:         z.number().int(),
+  event_id:           z.string().uuid(),
+  title:              z.string(),
+  starts_at:          z.string().datetime(),
+  bookings:           z.number().int(),
+  sales_cents:        z.number().int(),
+  tips_cents:         z.number().int(),
+  taxes_cents:        z.number().int(),
+  platform_fee_cents: z.number().int(),
+  refunds_cents:      z.number().int(),
+  net_cents:          z.number().int(),
 });
 
 export const ReportSummarySchema = z.object({
@@ -318,18 +366,91 @@ export const ReportSummarySchema = z.object({
   events: z.array(ReportEventRowSchema),
 });
 
-// ── Admin ──────────────────────────────────────────────────────────────────────
-export const ChefApplicationSchema = z.object({
-  id:              z.string().uuid(),
-  chef_profile_id: z.string().uuid(),
-  brand_name:      z.string(),
-  city:            z.string(),
-  bio:             z.string().nullable(),
-  cuisines:        z.array(z.string()),
-  applied_at:      z.string().datetime(),
-  status:          z.enum(["pending","approved","rejected"]),
+// ── Chef applications + invite codes ──────────────────────────────────────────
+// Tables created in migration 0022.
+
+export const InviteCodeSchema = z.object({
+  code:        z.string(),
+  description: z.string().nullable(),
+  max_uses:    z.number().int(),
+  used_count:  z.number().int(),
+  status:      z.enum(["active","exhausted","revoked"]),
+  expires_at:  z.string().datetime().nullable(),
+  created_at:  z.string().datetime(),
 });
 
+// Full application schema (admin view — includes priority_eligible, review fields)
+export const ChefApplicationSchema = z.object({
+  id:                z.string().uuid(),
+  first_name:        z.string(),
+  last_name:         z.string(),
+  email:             z.string().email(),
+  city:              z.string(),
+  cuisine:           z.string(),
+  experience:        z.string(),
+  social_handle:     z.string().nullable(),
+  invite_code:       z.string().nullable(),
+  about:             z.string(),
+  priority_eligible: z.boolean(),
+  status:            z.enum(["pending","approved","rejected"]),
+  reviewed_by:       z.string().uuid().nullable(),
+  review_note:       z.string().nullable(),
+  applied_at:        z.string().datetime(),
+  reviewed_at:       z.string().datetime().nullable(),
+});
+
+// Public submission schema (what the apply form POSTs — no admin-only fields)
+export const ChefApplicationSubmitSchema = z.object({
+  first_name:    z.string().min(1),
+  last_name:     z.string().min(1),
+  email:         z.string().email(),
+  city:          z.string().min(1),
+  cuisine:       z.string().min(1),
+  experience:    z.enum(["1-3","3-5","5-10","10+"]),
+  social_handle: z.string().optional(),
+  invite_code:   z.string().optional(),
+  about:         z.string().min(20),
+});
+
+// ── AI profile import ─────────────────────────────────────────────────────────
+// POST /chef/onboard/profile-import
+// Accepts chef-provided content → Azure LLM → returns draft ChefProfile fields.
+//
+// TODO (Instagram Graph API path — decision pending):
+//   When the chef connects their Instagram Business/Creator account via OAuth,
+//   the same generator receives the bio, recent posts, and highlights from the
+//   Graph API response. The LLM layer is identical; only the content source
+//   differs. Wire as: GET /chef/onboard/instagram/callback → fetch Graph API
+//   content → call the same generateChefProfile() function below.
+//   Ref: https://developers.facebook.com/docs/instagram-platform/instagram-graph-api
+
+export const ProfileImportRequestSchema = z.object({
+  bio_text:             z.string().min(10).max(2000),
+  cuisine_description:  z.string().min(5).max(500),
+  dishes: z.array(z.object({
+    name:        z.string(),
+    description: z.string().optional(),
+  })).max(20),
+  // Optional — populated by Instagram Graph API callback later:
+  past_venues:    z.array(z.string()).optional(),
+  years_experience: z.number().int().nonnegative().optional(),
+  awards:         z.array(z.string()).optional(),
+  press_mentions: z.array(z.string()).optional(), // raw text → LLM structures into PressItem[]
+});
+
+export const ProfileImportResponseSchema = z.object({
+  // Generated draft fields — chef reviews and confirms before saving
+  brand_name:   z.string(),
+  bio:          z.string(),
+  cuisines:     z.array(z.string()),
+  professional: ProfessionalSchema,
+  // Suggested sample posts (caption text only — chef attaches own media)
+  sample_posts: z.array(z.object({ caption: z.string() })),
+  // Confidence score 0–1 from LLM self-assessment
+  confidence:   z.number().min(0).max(1),
+});
+
+// ── Admin ──────────────────────────────────────────────────────────────────────
 export const AdminStatsSchema = z.object({
   total_bookings:       z.number().int(),
   total_revenue_cents:  z.number().int(),
@@ -342,6 +463,9 @@ export const AdminStatsSchema = z.object({
 export type Profile = z.infer<typeof ProfileSchema>;
 export type ChefProfile = z.infer<typeof ChefProfileSchema>;
 export type ChefProfilePublic = z.infer<typeof ChefProfilePublicSchema>;
+export type Professional = z.infer<typeof ProfessionalSchema>;
+export type PressItem = z.infer<typeof PressItemSchema>;
+export type Cookbook = z.infer<typeof CookbookSchema>;
 export type Event = z.infer<typeof EventSchema>;
 export type EventCard = z.infer<typeof EventCardSchema>;
 export type TicketType = z.infer<typeof TicketTypeSchema>;
@@ -351,6 +475,7 @@ export type LineItems = z.infer<typeof LineItemsSchema>;
 export type Payment = z.infer<typeof PaymentSchema>;
 export type Policy = z.infer<typeof PolicySchema>;
 export type FeedPost = z.infer<typeof FeedPostSchema>;
+export type HeroFeedPost = z.infer<typeof HeroFeedPostSchema>;
 export type AgentTask = z.infer<typeof AgentTaskSchema>;
 export type QuoteRequest = z.infer<typeof QuoteRequestSchema>;
 export type HoldRequest = z.infer<typeof HoldRequestSchema>;
@@ -364,5 +489,9 @@ export type TeamPermissions = z.infer<typeof TeamPermissionsSchema>;
 export type TeamMember = z.infer<typeof TeamMemberSchema>;
 export type ReportEventRow = z.infer<typeof ReportEventRowSchema>;
 export type ReportSummary = z.infer<typeof ReportSummarySchema>;
+export type InviteCode = z.infer<typeof InviteCodeSchema>;
 export type ChefApplication = z.infer<typeof ChefApplicationSchema>;
+export type ChefApplicationSubmit = z.infer<typeof ChefApplicationSubmitSchema>;
+export type ProfileImportRequest = z.infer<typeof ProfileImportRequestSchema>;
+export type ProfileImportResponse = z.infer<typeof ProfileImportResponseSchema>;
 export type AdminStats = z.infer<typeof AdminStatsSchema>;
