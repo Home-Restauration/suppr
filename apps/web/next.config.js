@@ -8,6 +8,7 @@ const nextConfig = {
   transpilePackages: ["@suppr/ui", "@suppr/contracts"],
   env: {
     NEXT_PUBLIC_AZURE_CDN_ENDPOINT: process.env.AZURE_CDN_ENDPOINT ?? "",
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL ?? "",
   },
   images: {
     remotePatterns: [
@@ -19,7 +20,15 @@ const nextConfig = {
       { protocol: "https", hostname: "image.mux.com" },
     ],
   },
-  experimental: { serverActions: { allowedOrigins: ["localhost:3000"] } },
+  experimental: {
+    serverActions: {
+      allowedOrigins: [
+        "localhost:3000",
+        "*.vercel.app",
+        process.env.VERCEL_URL,
+      ].filter(Boolean),
+    },
+  },
 };
 
 module.exports = withPWA(nextConfig);

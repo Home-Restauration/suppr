@@ -14,7 +14,22 @@ import { adminRoute } from "./routes/admin.js";
 
 const app = Fastify({ logger: true });
 
-await app.register(cors, { origin: process.env.APP_URL });
+// CORS_ORIGINS: comma-separated list, e.g. "https://suppr.vercel.app,http://localhost:3000"
+// Falls back to APP_URL for single-origin backwards compat.
+const allowedOrigins = new Set(
+  (process.env.CORS_ORIGINS ?? process.env.APP_URL ?? "")
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean)
+);
+await app.register(cors, {
+  origin: (origin, cb) => {
+    // Allow requests with no Origin header (server-to-server, curl, health checks)
+    if (!origin) return cb(null, true);
+    cb(null, allowedOrigins.has(origin));
+  },
+  credentials: true,
+});
 await app.register(helmet);
 
 app.get("/health", async () => ({ ok: true, ts: new Date().toISOString() }));
