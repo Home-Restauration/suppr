@@ -5,9 +5,17 @@ const withPWA = require("next-pwa")({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  transpilePackages: ["@suppr/ui", "@suppr/contracts"],
+  env: {
+    // Expose CDN endpoint to client components (no secret — it's a public URL)
+    NEXT_PUBLIC_AZURE_CDN_ENDPOINT: process.env.AZURE_CDN_ENDPOINT ?? "",
+  },
   images: {
     remotePatterns: [
-      { protocol: "https", hostname: process.env.AZURE_CDN_HOSTNAME || "*.azureedge.net" },
+      {
+        protocol: "https",
+        hostname: process.env.AZURE_CDN_HOSTNAME || "*.azurefd.net",
+      },
       { protocol: "https", hostname: "*.supabase.co" },
       { protocol: "https", hostname: "image.mux.com" },
     ],
