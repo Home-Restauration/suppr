@@ -1,4 +1,4 @@
-import type { FastifyPluginAsync } from "fastify";
+import type { FastifyInstance, FastifyPluginAsync } from "fastify";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 
@@ -16,8 +16,182 @@ function getSupabase() {
   );
 }
 
+// ── Fulfillment helpers ───────────────────────────────────────────────────────
+// Shared by both platform (stripe.ts) and connect (stripe-connect.ts) handlers
+// so fulfillment works regardless of whether we use destination or direct charges.
+
+export async function fulfillCheckoutSession(
+  session: Stripe.Checkout.Session,
+  fastify: FastifyInstance
+): Promise<void> {
+  const bookingId = session.metadata?.booking_id;
+  if (!bookingId) {
+    fastify.log.warn("[stripe] checkout.session.completed: no booking_id in metadata");
+    return;
+  }
+
+  const supabase = getSupabase();
+
+  // Idempotency — Stripe retries webhooks; skip if already fulfilled
+  const { data: existing } = await supabase
+    .from("payments")
+    .select("id")
+    .eq("booking_id", bookingId)
+    .maybeSingle();
+  if (existing) {
+    fastify.log.info(`[stripe] already fulfilled booking ${bookingId}, skipping`);
+    return;
+  }
+
+  // Amounts from metadata (written by POST /bookings when session was created)
+  const subtotalCents      = parseInt(session.metadata?.subtotal_cents       ?? "0", 10);
+  const taxCents           = parseInt(session.metadata?.tax_cents             ?? "0", 10);
+  const gratuityReqCents   = parseInt(session.metadata?.gratuity_req_cents    ?? "0", 10);
+  const gratuityExtraCents = parseInt(session.metadata?.gratuity_extra_cents  ?? "0", 10);
+  const platformFeeCents   = parseInt(session.metadata?.platform_fee_cents    ?? "0", 10);
+  const processorFeeCents  = parseInt(session.metadata?.processor_fee_cents   ?? "0", 10);
+  const totalCents         = session.amount_total ?? 0;
+  const payoutCents        = totalCents - platformFeeCents - processorFeeCents;
+
+  const paymentIntentId =
+    typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : (session.payment_intent as Stripe.PaymentIntent | null)?.id ?? null;
+
+  // Write payment record
+  const { error: paymentError } = await supabase.from("payments").insert({
+    booking_id:          bookingId,
+    provider:            "stripe",
+    provider_payment_id: paymentIntentId,
+    subtotal_cents:      subtotalCents,
+    tax_cents:           taxCents,
+    gratuity_req_cents:  gratuityReqCents,
+    gratuity_extra_cents: gratuityExtraCents,
+    platform_fee_cents:  platformFeeCents,
+    processor_fee_cents: processorFeeCents,
+    refund_cents:        0,
+    payout_cents:        payoutCents,
+    status:              "paid",
+  });
+
+  if (paymentError) {
+    fastify.log.error(paymentError, `[stripe] payments insert failed for booking ${bookingId}`);
+    return;
+  }
+
+  // Confirm the booking
+  await supabase.from("bookings").update({ status: "confirmed" }).eq("id", bookingId);
+
+  // Enqueue confirmation notifications (email + SMS if available)
+  const { data: booking } = await supabase
+    .from("bookings")
+    .select("buyer_email, buyer_phone, buyer_name, event_id")
+    .eq("id", bookingId)
+    .single();
+
+  const { data: event } = await supabase
+    .from("events")
+    .select("title, starts_at")
+    .eq("id", booking?.event_id)
+    .single();
+
+  const notifications: Array<Record<string, unknown>> = [];
+  if (booking?.buyer_email) {
+    notifications.push({
+      channel: "email",
+      template: "booking_confirmation",
+      to: booking.buyer_email,
+      guestName: booking.buyer_name,
+      eventTitle: event?.title ?? "",
+      eventDate: event?.starts_at ?? "",
+      bookingId,
+      totalCents,
+    });
+  }
+  if (booking?.buyer_phone) {
+    notifications.push({
+      channel: "sms",
+      to: booking.buyer_phone,
+      message: `Your booking for ${event?.title ?? "the event"} is confirmed! Ref: ${bookingId.slice(0, 8)}`,
+    });
+  }
+
+  for (const msg of notifications) {
+    await supabase
+      .rpc("pgmq_send", { queue_name: "notifications", message: msg })
+      .then(({ error: e }) => {
+        if (e) fastify.log.warn(`[stripe] pgmq_send failed: ${e.message}`);
+      });
+  }
+
+  fastify.log.info(`[stripe] booking ${bookingId} confirmed, ${totalCents / 100} USD`);
+}
+
+export async function expireCheckoutSession(
+  session: Stripe.Checkout.Session,
+  fastify: FastifyInstance
+): Promise<void> {
+  const bookingId = session.metadata?.booking_id;
+  if (!bookingId) return;
+
+  const supabase = getSupabase();
+  const { error } = await supabase
+    .from("bookings")
+    .update({ status: "cancelled" })
+    .eq("id", bookingId)
+    .eq("status", "pending");
+
+  if (error) fastify.log.error(error, `[stripe] expire: booking update failed for ${bookingId}`);
+  else fastify.log.info(`[stripe] booking ${bookingId} expired → cancelled`);
+}
+
+export async function handleChargeRefunded(
+  charge: Stripe.Charge,
+  fastify: FastifyInstance
+): Promise<void> {
+  const paymentIntentId =
+    typeof charge.payment_intent === "string"
+      ? charge.payment_intent
+      : (charge.payment_intent as Stripe.PaymentIntent | null)?.id ?? null;
+  if (!paymentIntentId) return;
+
+  const supabase = getSupabase();
+
+  // Look up the payment row first (need booking_id for the booking update)
+  const { data: payment } = await supabase
+    .from("payments")
+    .select("id, booking_id")
+    .eq("provider_payment_id", paymentIntentId)
+    .maybeSingle();
+
+  if (!payment) {
+    fastify.log.warn(`[stripe] charge.refunded: no payment row for PI ${paymentIntentId}`);
+    return;
+  }
+
+  const refundCents = charge.amount_refunded;
+  const isFullRefund = charge.refunded;
+  const newStatus = isFullRefund ? "refunded" : "partially_refunded";
+
+  await supabase
+    .from("payments")
+    .update({ refund_cents: refundCents, status: newStatus })
+    .eq("id", payment.id);
+
+  if (isFullRefund) {
+    await supabase
+      .from("bookings")
+      .update({ status: "refunded" })
+      .eq("id", payment.booking_id);
+    fastify.log.info(`[stripe] booking ${payment.booking_id} fully refunded`);
+  } else {
+    fastify.log.info(`[stripe] booking ${payment.booking_id} partially refunded: ${refundCents} cents`);
+  }
+}
+
+// ── Connect webhook route ─────────────────────────────────────────────────────
+
 export const stripeConnectWebhookRoute: FastifyPluginAsync = async (fastify) => {
-  // Override JSON parser to preserve raw body for Stripe signature verification
   fastify.addContentTypeParser(
     "application/json",
     { parseAs: "buffer" },
@@ -42,185 +216,127 @@ export const stripeConnectWebhookRoute: FastifyPluginAsync = async (fastify) => 
       return reply.code(400).send({ error: "Webhook signature verification failed" });
     }
 
-    // Every Connect event carries the connected account id at the top level
     const connectedAccountId = event.account ?? null;
 
     switch (event.type) {
       // ── Checkout ─────────────────────────────────────────────────────────────
       case "checkout.session.completed":
-        console.log("[stripe-connect] checkout.session.completed", event.id, connectedAccountId);
+        // Fires here for direct charges (on_behalf_of connected account).
+        // For destination charges the same event fires in stripe.ts (platform).
+        // fulfillCheckoutSession is idempotent — safe to handle in both.
+        await fulfillCheckoutSession(
+          event.data.object as Stripe.Checkout.Session,
+          fastify
+        );
         break;
 
       case "checkout.session.expired":
-        console.log("[stripe-connect] checkout.session.expired", event.id, connectedAccountId);
+        await expireCheckoutSession(
+          event.data.object as Stripe.Checkout.Session,
+          fastify
+        );
         break;
 
       // ── Payment intents ──────────────────────────────────────────────────────
       case "payment_intent.succeeded":
-        console.log("[stripe-connect] payment_intent.succeeded", event.id, connectedAccountId);
+        fastify.log.info(`[stripe-connect] payment_intent.succeeded ${event.id} acct=${connectedAccountId}`);
         break;
 
       case "payment_intent.payment_failed":
-        console.log("[stripe-connect] payment_intent.payment_failed", event.id, connectedAccountId);
+        // In Checkout, a failed attempt doesn't close the session — guest can retry.
+        // Log for observability; don't cancel the booking here.
+        fastify.log.warn(`[stripe-connect] payment_intent.payment_failed ${event.id} acct=${connectedAccountId}`);
         break;
 
       // ── Invoices ─────────────────────────────────────────────────────────────
       case "invoice.payment_succeeded":
-        console.log("[stripe-connect] invoice.payment_succeeded", event.id, connectedAccountId);
+        fastify.log.info(`[stripe-connect] invoice.payment_succeeded ${event.id}`);
         break;
 
       case "invoice.payment_failed":
-        console.log("[stripe-connect] invoice.payment_failed", event.id, connectedAccountId);
+        fastify.log.warn(`[stripe-connect] invoice.payment_failed ${event.id}`);
         break;
 
       case "invoice.finalized":
-        console.log("[stripe-connect] invoice.finalized", event.id, connectedAccountId);
+        fastify.log.info(`[stripe-connect] invoice.finalized ${event.id}`);
         break;
 
       // ── Setup intents ────────────────────────────────────────────────────────
       case "setup_intent.succeeded":
-        console.log("[stripe-connect] setup_intent.succeeded", event.id, connectedAccountId);
-        break;
-
       case "setup_intent.setup_failed":
-        console.log("[stripe-connect] setup_intent.setup_failed", event.id, connectedAccountId);
+        fastify.log.info(`[stripe-connect] ${event.type} ${event.id}`);
         break;
 
       // ── Charges & disputes ───────────────────────────────────────────────────
       case "charge.refunded":
-        console.log("[stripe-connect] charge.refunded", event.id, connectedAccountId);
+        await handleChargeRefunded(event.data.object as Stripe.Charge, fastify);
         break;
 
       case "charge.dispute.created":
-        console.log("[stripe-connect] charge.dispute.created", event.id, connectedAccountId);
+        fastify.log.warn(`[stripe-connect] dispute.created ${event.id} acct=${connectedAccountId}`);
         break;
 
       case "charge.dispute.updated":
-        console.log("[stripe-connect] charge.dispute.updated", event.id, connectedAccountId);
-        break;
-
       case "charge.dispute.closed":
-        console.log("[stripe-connect] charge.dispute.closed", event.id, connectedAccountId);
-        break;
-
       case "charge.dispute.funds_withdrawn":
-        console.log("[stripe-connect] charge.dispute.funds_withdrawn", event.id, connectedAccountId);
-        break;
-
       case "charge.dispute.funds_reinstated":
-        console.log("[stripe-connect] charge.dispute.funds_reinstated", event.id, connectedAccountId);
+        fastify.log.info(`[stripe-connect] ${event.type} ${event.id}`);
         break;
 
       // ── Refunds ──────────────────────────────────────────────────────────────
       case "refund.created":
-        console.log("[stripe-connect] refund.created", event.id, connectedAccountId);
-        break;
-
       case "refund.updated":
-        console.log("[stripe-connect] refund.updated", event.id, connectedAccountId);
+        fastify.log.info(`[stripe-connect] ${event.type} ${event.id}`);
         break;
 
       // ── Transfers ────────────────────────────────────────────────────────────
       case "transfer.created":
-        console.log("[stripe-connect] transfer.created", event.id, connectedAccountId);
-        break;
-
       case "transfer.reversed":
-        console.log("[stripe-connect] transfer.reversed", event.id, connectedAccountId);
+        fastify.log.info(`[stripe-connect] ${event.type} ${event.id}`);
         break;
 
       // ── Connected account lifecycle ──────────────────────────────────────────
       case "account.updated":
-        console.log("[stripe-connect] account.updated", event.id, connectedAccountId);
+        fastify.log.info(`[stripe-connect] account.updated ${connectedAccountId}`);
         break;
 
       case "account.application.deauthorized": {
-        // Chef disconnected their Stripe account — clear payment_acct_id and raise support task
-        fastify.log.warn(
-          `[stripe-connect] account.application.deauthorized: ${connectedAccountId}`
-        );
-
+        fastify.log.warn(`[stripe-connect] account.application.deauthorized: ${connectedAccountId}`);
         const supabase = getSupabase();
-
-        // Find the chef_profile that holds this Stripe account id
-        const { data: chef, error: findError } = await supabase
+        const { data: chef } = await supabase
           .from("chef_profiles")
           .select("id")
           .eq("payment_acct_id", connectedAccountId)
           .maybeSingle();
 
-        if (findError) {
-          fastify.log.error(findError, "[stripe-connect] deauthorized: chef lookup failed");
-        }
-
-        // Clear payment_acct_id regardless of whether we found a chef row
-        const { error: updateError } = await supabase
+        await supabase
           .from("chef_profiles")
           .update({ payment_acct_id: null })
           .eq("payment_acct_id", connectedAccountId);
 
-        if (updateError) {
-          fastify.log.error(updateError, "[stripe-connect] deauthorized: payment_acct_id clear failed");
-        }
-
-        // Create a support agent_task so the chef console shows a reconnect prompt
         if (chef) {
-          const { error: taskError } = await supabase.from("agent_tasks").insert({
+          await supabase.from("agent_tasks").insert({
             chef_profile_id: chef.id,
             kind: "support",
             status: "proposed",
             summary: "Chef Stripe account disconnected — needs reconnection",
             payload: { disconnected_account_id: connectedAccountId },
           });
-
-          if (taskError) {
-            fastify.log.error(taskError, "[stripe-connect] deauthorized: agent_task insert failed");
-          }
         }
         break;
       }
 
       case "account.external_account.created":
-        console.log("[stripe-connect] account.external_account.created", event.id, connectedAccountId);
-        break;
-
       case "account.external_account.updated":
-        console.log("[stripe-connect] account.external_account.updated", event.id, connectedAccountId);
-        break;
-
-      // ── Capabilities & persons ───────────────────────────────────────────────
       case "capability.updated":
-        console.log("[stripe-connect] capability.updated", event.id, connectedAccountId);
-        break;
-
       case "person.created":
-        console.log("[stripe-connect] person.created", event.id, connectedAccountId);
-        break;
-
       case "person.updated":
-        console.log("[stripe-connect] person.updated", event.id, connectedAccountId);
-        break;
-
       case "person.deleted":
-        console.log("[stripe-connect] person.deleted", event.id, connectedAccountId);
-        break;
-
-      // ── Payment methods ──────────────────────────────────────────────────────
       case "payment_method.attached":
-        console.log("[stripe-connect] payment_method.attached", event.id, connectedAccountId);
-        break;
-
       case "payment_method.detached":
-        console.log("[stripe-connect] payment_method.detached", event.id, connectedAccountId);
-        break;
-
-      // ── Payment links ────────────────────────────────────────────────────────
       case "payment_link.created":
-        console.log("[stripe-connect] payment_link.created", event.id, connectedAccountId);
-        break;
-
       case "payment_link.updated":
-        console.log("[stripe-connect] payment_link.updated", event.id, connectedAccountId);
+        fastify.log.info(`[stripe-connect] ${event.type} ${event.id}`);
         break;
 
       default:

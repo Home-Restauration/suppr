@@ -1,5 +1,10 @@
 import type { FastifyPluginAsync } from "fastify";
 import Stripe from "stripe";
+import {
+  fulfillCheckoutSession,
+  expireCheckoutSession,
+  handleChargeRefunded,
+} from "./stripe-connect.js";
 
 let _stripe: Stripe | null = null;
 function getStripe() {
@@ -96,9 +101,23 @@ export const stripeWebhookRoute: FastifyPluginAsync = async (fastify) => {
         console.log("[stripe] review.closed", event.id);
         break;
 
+      // ── Checkout (destination charges — platform webhook) ────────────────────
+      case "checkout.session.completed":
+        await fulfillCheckoutSession(event.data.object as Stripe.Checkout.Session, fastify);
+        break;
+
+      case "checkout.session.expired":
+        await expireCheckoutSession(event.data.object as Stripe.Checkout.Session, fastify);
+        break;
+
+      // ── Charge refunds ───────────────────────────────────────────────────────
+      case "charge.refunded":
+        await handleChargeRefunded(event.data.object as Stripe.Charge, fastify);
+        break;
+
       // ── Customers ────────────────────────────────────────────────────────────
       case "customer.deleted":
-        console.log("[stripe] customer.deleted", event.id);
+        fastify.log.info(`[stripe] customer.deleted ${event.id}`);
         break;
 
       default:

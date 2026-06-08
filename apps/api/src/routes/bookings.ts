@@ -203,7 +203,15 @@ export async function bookingsRoute(app: FastifyInstance) {
       success_url: successUrl,
       cancel_url: cancelUrl,
       customer_email: buyer_email,
-      metadata: { booking_id: bk.id },
+      metadata: {
+        booking_id: bk.id,
+        subtotal_cents:      String(lineItems.subtotal_cents),
+        tax_cents:           String(lineItems.tax_cents),
+        gratuity_req_cents:  String(lineItems.gratuity_required_cents),
+        gratuity_extra_cents:String(lineItems.gratuity_extra_cents),
+        platform_fee_cents:  String(lineItems.platform_fee_cents),
+        processor_fee_cents: String(lineItems.processor_fee_cents),
+      },
       line_items: lineItems.breakdown.map((item) => ({
         price_data: {
           currency: "usd",
