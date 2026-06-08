@@ -189,6 +189,9 @@ export const BookingSchema = z.object({
   status: BookingStatus,
   channel: Channel,
   address_sent_at: z.string().datetime().nullable(),
+  // Set by fulfillCheckoutSession from session.amount_total — the Stripe-
+  // authoritative total. NULL on bookings created before migration 0024.
+  total_cents: z.number().int().nonnegative().nullable().optional(),
   created_at: z.string().datetime(),
   guests: z.array(GuestInputSchema).optional(),
 });

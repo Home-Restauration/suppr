@@ -79,8 +79,11 @@ export async function fulfillCheckoutSession(
     return;
   }
 
-  // Confirm the booking
-  await supabase.from("bookings").update({ status: "confirmed" }).eq("id", bookingId);
+  // Confirm the booking and stamp the Stripe-authoritative total
+  await supabase
+    .from("bookings")
+    .update({ status: "confirmed", total_cents: totalCents })
+    .eq("id", bookingId);
 
   // Enqueue confirmation notifications (email + SMS if available)
   const { data: booking } = await supabase

@@ -567,9 +567,10 @@ export function ConfirmationClient({ bookingId, initialBooking, initialEvent }: 
     );
   }
 
-  // Confirmed — compute total from what we have
+  // Prefer the Stripe-authoritative total stamped by the webhook (migration 0024).
+  // Fall back to price × qty for bookings created before the migration.
   const pricePerSeat = event?.ticket_types?.[0]?.price_cents ?? 0;
-  const priceCents = pricePerSeat * booking.guest_count;
+  const priceCents = booking.total_cents ?? (pricePerSeat * booking.guest_count);
 
   if (!event) {
     // Confirmed but event didn't load — show minimal success
