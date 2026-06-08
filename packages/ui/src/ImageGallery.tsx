@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { Skeleton } from "./Skeleton.js";
+import { Skeleton } from "./Skeleton";
 
 interface GalleryImage {
   url: string;

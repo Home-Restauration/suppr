@@ -1,7 +1,7 @@
 import React from "react";
-import { Avatar } from "./Avatar.js";
-import { Chip } from "./Chip.js";
-import { Skeleton } from "./Skeleton.js";
+import { Avatar } from "./Avatar";
+import { Chip } from "./Chip";
+import { Skeleton } from "./Skeleton";
 
 interface FeedCardMedia {
   url: string;

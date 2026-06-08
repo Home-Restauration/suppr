@@ -1,7 +1,7 @@
 import React from "react";
-import { Chip } from "./Chip.js";
-import { Avatar } from "./Avatar.js";
-import { Skeleton } from "./Skeleton.js";
+import { Chip } from "./Chip";
+import { Avatar } from "./Avatar";
+import { Skeleton } from "./Skeleton";
 
 interface EventCardMedia {
   url: string;
