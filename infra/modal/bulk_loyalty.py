@@ -1,12 +1,17 @@
 """Bulk loyalty outreach — birthday notes + chef-drop re-engagement."""
-import modal, os, httpx
-from openai import OpenAI
+import modal
+import os
+
+image = modal.Image.debian_slim().pip_install("fastapi[standard]", "httpx", "openai")
 
 app = modal.App("suppr-bulk-loyalty")
 
-@app.function(secrets=[modal.Secret.from_name("suppr-secrets")])
-@modal.web_endpoint(method="POST")
+@app.function(image=image, secrets=[modal.Secret.from_name("suppr-secrets")])
+@modal.fastapi_endpoint(method="POST")
 def run(payload: dict) -> dict:
+    import httpx
+    from openai import OpenAI
+
     token = payload.get("service_token")
     if token != os.environ["SERVICE_TOKEN"]:
         return {"error": "unauthorized"}, 401

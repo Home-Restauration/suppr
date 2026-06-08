@@ -1,12 +1,16 @@
 """Bulk AI event autofill — draft event pages from chef prompts + photos."""
-import modal, os
-from openai import OpenAI
+import modal
+import os
+
+image = modal.Image.debian_slim().pip_install("fastapi[standard]", "openai")
 
 app = modal.App("suppr-bulk-autofill")
 
-@app.function(secrets=[modal.Secret.from_name("suppr-secrets")])
-@modal.web_endpoint(method="POST")
+@app.function(image=image, secrets=[modal.Secret.from_name("suppr-secrets")])
+@modal.fastapi_endpoint(method="POST")
 def run(payload: dict) -> dict:
+    from openai import OpenAI
+
     token = payload.get("service_token")
     if token != os.environ["SERVICE_TOKEN"]:
         return {"error": "unauthorized"}, 401
