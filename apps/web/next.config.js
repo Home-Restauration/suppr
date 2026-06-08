@@ -5,7 +5,7 @@ const withPWA = require("next-pwa")({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ["@suppr/ui", "@suppr/contracts"],
+  transpilePackages: ["@suppr/ui"],
   env: {
     NEXT_PUBLIC_AZURE_CDN_ENDPOINT: process.env.AZURE_CDN_ENDPOINT ?? "",
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL ?? "",

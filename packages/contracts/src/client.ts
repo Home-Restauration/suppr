@@ -7,7 +7,7 @@ import type {
   TeamMember, TeamPermissions, ReportSummary,
   ChefApplication, ChefApplicationSubmit, AdminStats,
   InviteCode, ProfileImportRequest, ProfileImportResponse,
-} from "./schemas";
+} from "./schemas.js";
 import { z } from "zod";
 
 export interface ApiClientConfig {
