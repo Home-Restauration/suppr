@@ -7,7 +7,6 @@ const withPWA = require("next-pwa")({
 const nextConfig = {
   transpilePackages: ["@suppr/ui", "@suppr/contracts"],
   env: {
-    // Expose CDN endpoint to client components (no secret — it's a public URL)
     NEXT_PUBLIC_AZURE_CDN_ENDPOINT: process.env.AZURE_CDN_ENDPOINT ?? "",
   },
   images: {
