@@ -6,7 +6,11 @@ export const metadata: Metadata = {
   title: "Suppr — Curated culinary experiences",
   description: "Discover chefs cooking near you tonight.",
   manifest: "/manifest.json",
-  themeColor: "#FDFCFA",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Suppr",
+  },
 };
 
 export const viewport: Viewport = { width: "device-width", initialScale: 1 };

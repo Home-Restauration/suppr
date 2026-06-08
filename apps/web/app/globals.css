@@ -3,3 +3,21 @@
 @tailwind components;
 @tailwind utilities;
 * { box-sizing: border-box; margin: 0; padding: 0; }
+
+@keyframes suppr-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes suppr-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes suppr-sheet-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+/* Google Fonts — loaded here so all packages can use them */
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap");

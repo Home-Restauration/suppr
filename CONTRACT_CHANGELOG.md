@@ -8,6 +8,7 @@ Every change to `packages/contracts` or `packages/db` is logged here.
 | 2025-01-01 | Initial SQL migrations 0001–0020 | scaffold |
 | 2026-06-05 | chef.profile.get + chef.profile.update — needed for autopilot toggle and console header | Claude Code |
 | 2026-06-05 | chef.events.bookings(eventId) — GET /chef/events/:id/bookings → Booking[] for guest list table | Claude Code |
+| 2026-06-05 | events.list + feed.list: added optional `chef_id` query param for chef profile page filtering | Claude Code |
 | 2026-06-07 | migration 0021: feed_posts.is_hero_featured + hero_order — hero/curated reel flag | Claude Code |
 | 2026-06-07 | migration 0022: chef_applications + invite_codes tables — invite-only onboarding flow | Claude Code |
 | 2026-06-07 | migration 0023: chef_profiles.professional jsonb — resume/portfolio fields | Claude Code |
