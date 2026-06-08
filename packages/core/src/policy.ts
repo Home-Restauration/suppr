@@ -26,7 +26,13 @@ export function checkPolicy(
   now: Date,
   paidCents: number
 ): PolicyCheckResult {
-  const windows = policy[action === "name_change" ? "name_change" : action];
+  const KEY_MAP: Record<ModifyAction, keyof PolicySet> = {
+    cancel: "cancellation",
+    reschedule: "reschedule",
+    transfer: "transfer",
+    name_change: "name_change",
+  };
+  const windows = policy[KEY_MAP[action]];
   const hoursUntilEvent = (eventStartsAt.getTime() - now.getTime()) / 3_600_000;
 
   if (hoursUntilEvent <= 0) {
@@ -35,8 +41,8 @@ export function checkPolicy(
 
   // Find the most generous applicable window
   const applicable = windows
-    .filter(w => hoursUntilEvent >= w.hours_before)
-    .sort((a, b) => b.hours_before - a.hours_before)[0];
+    .filter((w: PolicyWindow) => hoursUntilEvent >= w.hours_before)
+    .sort((a: PolicyWindow, b: PolicyWindow) => b.hours_before - a.hours_before)[0];
 
   if (!applicable) {
     return { allowed: false, refund_pct: 0, refund_cents: 0, message: "Outside the allowed window for this change." };

@@ -117,13 +117,14 @@ export default function AdminPage() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 12 }}>
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-                    <p style={{ fontSize: 16, fontWeight: 600, color: "var(--color-text)" }}>{app.brand_name}</p>
+                    <p style={{ fontSize: 16, fontWeight: 600, color: "var(--color-text)" }}>{app.first_name} {app.last_name}</p>
                     <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: "var(--radius-sm)", fontWeight: 600, background: app.status === "pending" ? "var(--color-note-bg)" : app.status === "approved" ? "var(--color-paid-bg)" : "var(--color-alert-bg)", color: app.status === "pending" ? "var(--color-note)" : app.status === "approved" ? "var(--color-paid)" : "var(--color-alert)" }}>
                       {app.status}
                     </span>
+                    {app.priority_eligible && <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: "var(--radius-sm)", fontWeight: 600, background: "var(--color-trust-bg)", color: "var(--color-trust)" }}>Priority</span>}
                   </div>
-                  <p style={{ fontSize: 13, color: "var(--color-text-2)" }}>{app.city} · {app.cuisines.join(", ")}</p>
-                  {app.bio && <p style={{ fontSize: 13, color: "var(--color-text-2)", marginTop: 8, lineHeight: 1.5 }}>{app.bio}</p>}
+                  <p style={{ fontSize: 13, color: "var(--color-text-2)" }}>{app.city} · {app.cuisine}</p>
+                  {app.about && <p style={{ fontSize: 13, color: "var(--color-text-2)", marginTop: 8, lineHeight: 1.5 }}>{app.about}</p>}
                   <p style={{ fontSize: 11, color: "var(--color-text-muted)", marginTop: 8 }}>Applied {new Date(app.applied_at).toLocaleDateString()}</p>
                 </div>
 

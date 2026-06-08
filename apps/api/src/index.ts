@@ -4,6 +4,13 @@ import helmet from "@fastify/helmet";
 import { stripeWebhookRoute } from "./webhooks/stripe.js";
 import { stripeConnectWebhookRoute } from "./webhooks/stripe-connect.js";
 import { muxWebhookRoute } from "./webhooks/mux.js";
+import { eventsRoute } from "./routes/events.js";
+import { feedRoute } from "./routes/feed.js";
+import { chefsRoute } from "./routes/chefs.js";
+import { bookingsRoute } from "./routes/bookings.js";
+import { chefApplicationsRoute } from "./routes/chef-applications.js";
+import { chefRoute } from "./routes/chef.js";
+import { adminRoute } from "./routes/admin.js";
 
 const app = Fastify({ logger: true });
 
@@ -12,16 +19,27 @@ await app.register(helmet);
 
 app.get("/health", async () => ({ ok: true, ts: new Date().toISOString() }));
 
-// Webhook routes — each registered as an isolated scoped plugin so their
-// raw-body content-type parser doesn't bleed into other routes.
+// Webhook routes — raw-body parsers isolated in scoped plugins
 await app.register(stripeWebhookRoute);
 await app.register(stripeConnectWebhookRoute);
 await app.register(muxWebhookRoute);
 
-// Routes will be registered here:
-// await app.register(import("./routes/events.js").then(m => m.eventsRoute));
-// await app.register(import("./routes/bookings.js").then(m => m.bookingsRoute));
-// etc.
+// Public discovery — no auth required
+await app.register(eventsRoute);
+await app.register(feedRoute);
+await app.register(chefsRoute);
+
+// Booking flow — name+email only, no account needed
+await app.register(bookingsRoute);
+
+// Public chef application
+await app.register(chefApplicationsRoute);
+
+// Chef console — authenticated (Bearer JWT)
+await app.register(chefRoute);
+
+// Admin console — admin role only
+await app.register(adminRoute);
 
 const port = Number(process.env.PORT ?? 3001);
 try {
