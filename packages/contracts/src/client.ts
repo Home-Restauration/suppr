@@ -1,6 +1,6 @@
 import type {
   EventCard, EventSchema, ChefProfilePublic, FeedPost, HeroFeedPost,
-  QuoteRequest, LineItems, HoldRequest, HoldResponse,
+  QuoteRequest, LineItems, HoldRequest, HoldResponse, HoldDetail,
   CreateBookingRequest, CreateBookingResponse,
   Booking, ModifyBookingRequest, ModifyBookingResponse,
   WaitlistRequestSchema, DashboardSnapshot, AgentTask,
@@ -76,6 +76,7 @@ export function createApiClient(config: ApiClientConfig) {
     bookings: {
       quote: (body: QuoteRequest) => r<LineItems>("POST", "/bookings/quote", body),
       hold: (body: HoldRequest) => r<HoldResponse>("POST", "/bookings/hold", body),
+      getHold: (id: string) => r<HoldDetail>("GET", `/bookings/holds/${id}`),
       create: (body: CreateBookingRequest) => r<CreateBookingResponse>("POST", "/bookings", body),
       get: (id: string) => r<Booking>("GET", `/bookings/${id}`),
       modify: (id: string, body: ModifyBookingRequest) =>

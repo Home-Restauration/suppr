@@ -118,6 +118,29 @@ export async function bookingsRoute(app: FastifyInstance) {
     reply.send({ hold_id: (hold as any).id, expires_at: expiresAt, seats_held: qty });
   });
 
+  // GET /bookings/holds/:id — fetch hold details for checkout page (public, no auth)
+  app.get<{ Params: { id: string } }>("/bookings/holds/:id", async (request, reply) => {
+    const { data: hold } = await db
+      .from("seat_holds")
+      .select("id, event_id, ticket_type_id, qty, expires_at")
+      .eq("id", request.params.id)
+      .single();
+
+    if (!hold) return reply.status(404).send({ error: "Hold not found" });
+    if (new Date((hold as any).expires_at) < new Date()) {
+      return reply.status(410).send({ error: "Hold expired" });
+    }
+
+    const h = hold as any;
+    reply.send({
+      hold_id: h.id,
+      event_id: h.event_id,
+      ticket_type_id: h.ticket_type_id,
+      qty: h.qty,
+      expires_at: h.expires_at,
+    });
+  });
+
   // POST /bookings — create booking, no account required (name + email or phone)
   app.post("/bookings", async (request, reply) => {
     const body = CreateBookingRequestSchema.safeParse(request.body);

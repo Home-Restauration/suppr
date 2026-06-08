@@ -277,6 +277,15 @@ export const HoldResponseSchema = z.object({
   seats_held: z.number().int(),
 });
 
+// GET /bookings/holds/:id — returns raw hold fields needed by the checkout RSC
+export const HoldDetailSchema = z.object({
+  hold_id: z.string().uuid(),
+  event_id: z.string().uuid(),
+  ticket_type_id: z.string().uuid(),
+  qty: z.number().int().positive(),
+  expires_at: z.string().datetime(),
+});
+
 export const CreateBookingRequestSchema = z.object({
   hold_id: z.string().uuid(),
   buyer_name: z.string().min(1),
@@ -483,6 +492,7 @@ export type AgentTask = z.infer<typeof AgentTaskSchema>;
 export type QuoteRequest = z.infer<typeof QuoteRequestSchema>;
 export type HoldRequest = z.infer<typeof HoldRequestSchema>;
 export type HoldResponse = z.infer<typeof HoldResponseSchema>;
+export type HoldDetail = z.infer<typeof HoldDetailSchema>;
 export type CreateBookingRequest = z.infer<typeof CreateBookingRequestSchema>;
 export type CreateBookingResponse = z.infer<typeof CreateBookingResponseSchema>;
 export type ModifyBookingRequest = z.infer<typeof ModifyBookingRequestSchema>;
