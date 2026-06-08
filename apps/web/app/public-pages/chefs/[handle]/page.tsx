@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { createApiClient } from "@suppr/contracts/client";
 import type { ChefProfilePublic, EventCard, FeedPost } from "@suppr/contracts";
 import { Chip, EventCard as EventCardComponent, FeedCard, Skeleton } from "@suppr/ui";
-import { FollowButton } from "./FollowButton.js";
+import { FollowButton } from "./FollowButton";
 
 export const dynamic = "force-dynamic";
 

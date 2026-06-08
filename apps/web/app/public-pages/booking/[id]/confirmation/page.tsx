@@ -2,7 +2,7 @@ import React from "react";
 import { notFound } from "next/navigation";
 import { createApiClient } from "@suppr/contracts/client";
 import type { Booking, EventCard } from "@suppr/contracts";
-import { ConfirmationClient } from "./ConfirmationClient.js";
+import { ConfirmationClient } from "./ConfirmationClient";
 
 export const dynamic = "force-dynamic";
 

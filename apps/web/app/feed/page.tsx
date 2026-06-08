@@ -1,8 +1,8 @@
 import React from "react";
 import { createApiClient } from "@suppr/contracts/client";
 import type { EventCard, FeedPost } from "@suppr/contracts";
-import { DarkThemeMount } from "../DarkThemeMount.js";
-import { FeedClient } from "../FeedClient.js";
+import { DarkThemeMount } from "../DarkThemeMount";
+import { FeedClient } from "../FeedClient";
 
 export const dynamic = "force-dynamic";
 

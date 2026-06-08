@@ -2,7 +2,7 @@ import React from "react";
 import { notFound } from "next/navigation";
 import { createApiClient } from "@suppr/contracts/client";
 import type { EventCard, LineItems, HoldDetail } from "@suppr/contracts";
-import { CheckoutFlow } from "./CheckoutFlow.js";
+import { CheckoutFlow } from "./CheckoutFlow";
 
 export const dynamic = "force-dynamic";
 

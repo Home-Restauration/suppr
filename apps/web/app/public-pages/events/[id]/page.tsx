@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import { createApiClient } from "@suppr/contracts/client";
 import { Avatar, Chip, ImageGallery, Skeleton } from "@suppr/ui";
 import type { EventCard, LineItems } from "@suppr/contracts";
-import { BookingCard } from "./BookingCard.js";
+import { BookingCard } from "./BookingCard";
 
 export const dynamic = "force-dynamic";
 
